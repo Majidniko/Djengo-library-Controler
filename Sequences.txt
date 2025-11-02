@@ -1,0 +1,4 @@
+1. Install python env
+2. install djengo
+    my venv name: "Libenv"
+    me active venev command:"Libvenv\Scripts\activated.bat"
