@@ -37,7 +37,7 @@ class BookViewSet(viewsets.ModelViewSet):
         borrow = Borrow.objects.create(
             user=user,
             book=book,
-            return_date=timezone.now() + timedelta(days=7)
+            return_date=timezone.now() + timedelta(seconds=60) # تست با زمان کمتر به جای days=7
         )
 
         book.available_copies -= 1
