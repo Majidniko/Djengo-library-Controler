@@ -19,7 +19,7 @@ class BookViewSet(viewsets.ModelViewSet):
     serializer_class = BookSerializer
 
     def get_permissions(self):
-        if self.action in ['list', 'retrieve', 'borrow']:
+        if self.action in ['list', 'retrieve', 'borrow', 'return_book']:
             return [permissions.IsAuthenticated()]
         return [permissions.IsAdminUser()]
 
@@ -47,3 +47,34 @@ class BookViewSet(viewsets.ModelViewSet):
 
         serializer = BorrowSerializer(borrow)
         return Response(serializer.data, status=201)
+
+    @action(detail=True, methods=['post'], url_path='return')
+    def return_book(self, request, pk=None):
+        user = request.user
+        book = self.get_object()
+
+        try:
+            borrow = Borrow.objects.get(user=user, book=book, status='borrowed')
+        except Borrow.DoesNotExist:
+            return Response({"error": "شما چنین کتابی را امانت نگرفته‌اید یا قبلاً برگردانده‌اید."}, status=400)
+
+        now = timezone.now()
+        fine = 0
+        if now > borrow.return_date:
+            days_late = (now - borrow.return_date).days
+            fine = days_late * 5000
+            borrow.status = 'overdue'
+        else:
+            borrow.status = 'returned'
+
+        borrow.fine = fine
+        borrow.save()
+
+        book.available_copies += 1
+        book.save()
+
+        msg = f"کتاب {book.title} با موفقیت بازگردانده شد."
+        if fine > 0:
+            msg += f" جریمه دیرکرد: {fine} می باشد که باید پرداخت شود."
+
+        return Response({"message": msg, "fine": fine}, status=200)
