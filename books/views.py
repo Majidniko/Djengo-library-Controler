@@ -9,6 +9,10 @@ from django.utils import timezone
 from .models import Borrow
 from .serializers import BorrowSerializer
 from .tasks import send_borrow_notification  # Celery task
+from rest_framework import generics
+from .models import Notification
+from .serializers import NotificationSerializer
+
 
 class IsAdminUser(permissions.BasePermission):
     def has_permission(self, request, view):
@@ -78,3 +82,34 @@ class BookViewSet(viewsets.ModelViewSet):
             msg += f" جریمه دیرکرد: {fine} می باشد که باید پرداخت شود."
 
         return Response({"message": msg, "fine": fine}, status=200)
+    
+
+class MyBorrowsView(generics.ListAPIView):
+    serializer_class = BorrowSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return Borrow.objects.filter(user=self.request.user).order_by('-borrow_date')
+
+class MyNotificationsView(generics.ListAPIView):
+    serializer_class = NotificationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return Notification.objects.filter(user=self.request.user).order_by('-created_at')
+
+class MyFinesView(generics.ListAPIView):
+    serializer_class = BorrowSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        return Borrow.objects.filter(user=self.request.user, fine__gt=0)
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        total_fine = sum(item.fine for item in queryset)
+        return Response({
+            "total_fine": total_fine,
+            "items": serializer.data
+        })

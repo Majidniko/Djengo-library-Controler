@@ -39,4 +39,4 @@ class Notification(models.Model):
     is_read = models.BooleanField(default=False)
 
     def __str__(self):
-        return f"{self.user.username} - {self.message}"
+        return f"A Notification for {self.user.username} is {self.message}"
